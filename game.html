@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Click Miner</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: 'Press Start 2P', cursive;
+  background: #1a0f09;
+  image-rendering: pixelated;
+}
+
+/* POP ZOOM effect for the whole screen */
+.pop-zoom {
+  animation: screenPop 0.25s ease forwards;
+}
+@keyframes screenPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+#game {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #3b2b22 url('bg.png') center/cover no-repeat;
+  overflow: hidden;
+  transition: transform 0.15s ease;
+}
+
+/* Counter (top center) */
+#counter {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#counter img {
+  width: 36px;
+  height: 36px;
+  image-rendering: pixelated;
+}
+
+#count {
+  color: #fff;
+  font-size: 28px;
+}
+
+/* Crystal */
+#crystal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40vw;
+  max-width: 180px;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  image-rendering: pixelated;
+  transition: transform 0.1s ease;
+}
+
+.pop {
+  animation: popAnim 0.15s forwards;
+}
+@keyframes popAnim {
+  0% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.3); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Pickaxe */
+#pickaxe {
+  position: absolute;
+  top: 50%;
+  left: 56%;
+  width: 35vw;
+  max-width: 160px;
+  transform-origin: left center;
+  transform: translateX(-0%) translateY(-50%) rotate(0deg);
+  image-rendering: pixelated;
+}
+
+.swing {
+  animation: swingMotion 0.25s ease forwards;
+}
+@keyframes swingMotion {
+  0% { transform: translateX(-0%) translateY(-50%) rotate(0deg); }
+  40% { transform: translateX(-0%) translateY(-50%) rotate(-90deg); }
+  100% { transform: translateX(-0%) translateY(-50%) rotate(0deg); }
+}
+
+/* Drop animation (particles when mining) */
+.drop {
+  position: absolute;
+  width: 20vw;
+  max-width: 100px;
+  height: auto;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+/* Level bar */
+#level-bar-container {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  max-width: 400px;
+  height: 12px;
+  background: #2b1a3a;
+  border: 2px solid #1a0f24;
+  image-rendering: pixelated;
+}
+
+#level-bar {
+  width: 0%;
+  height: 100%;
+  background: #8a2be2;
+  image-rendering: pixelated;
+}
+
+/* Level counter (bottom) */
+#level-counter {
+  position: absolute;
+  bottom: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: white;
+  font-size: 14px;
+}
+
+#level-counter img {
+  width: 18px;
+  height: 18px;
+}
+
+/* Goblin Buy Button */
+#gob-button {
+  position: absolute;
+  top: 50%;
+  left: 25%;
+  transform: translate(-50%, -50%);
+  width: 150px;
+  height: 150px;
+  cursor: pointer;
+  image-rendering: pixelated;
+  z-index: 10;
+}
+
+/* Goblins */
+.goblin {
+  position: absolute;
+  width: 240px;
+  height: 240px;
+  image-rendering: pixelated;
+  pointer-events: none;
+  transform-origin: bottom center;
+  transition: transform 0.2s ease;
+  z-index: 2;
+}
+
+/* Skeletons */
+.skeleton {
+  position: absolute;
+  width: 240px;
+  height: 240px;
+  image-rendering: pixelated;
+  pointer-events: none;
+  transform-origin: bottom center;
+  z-index: 1;
+}
+
+/* Drop multiplier (under crystal) */
+#drop-display {
+  position: absolute;
+  top: 72%; /* adjust under the crystal */
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 20;
+}
+
+#drop-display.show {
+  opacity: 1;
+}
+
+#drop-display img {
+  width: 36px;   /* same as top counter drop */
+  height: 36px;
+  image-rendering: pixelated;
+}
+
+#drop-multiplier {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 18px;
+  color: #fff;
+  text-shadow: 2px 2px 4px #000;
+}
+/* Drop multiplier pop */
+.pop-zoom-drop {
+  animation: popZoomDrop 0.25s ease forwards;
+}
+@keyframes popZoomDrop {
+  0%   { transform: translateX(-50%) scale(1); }
+  50%  { transform: translateX(-50%) scale(1.3); }
+  100% { transform: translateX(-50%) scale(1); }
+}
+
+#sound-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 84px; /* doubled from 42px */
+  height: 84px; /* doubled from 42px */
+  cursor: pointer;
+  image-rendering: pixelated;
+  transition: transform 0.2s ease, filter 0.3s ease;
+  z-index: 20;
+  transform-origin: top right; /* keeps it anchored to top-right corner */
+}
+
+#sound-btn:hover {
+  transform: scale(1.1); /* still slightly bigger on hover */
+  filter: brightness(1.2);
+}
+
+#sound-btn.muted {
+  filter: brightness(1.2);
+}
+
+</style>
+</head>
+<body>
+<div id="game">
+  <!-- Main counter -->
+  <div id="counter">
+    <img src="drop.png" alt="drop">
+    <span id="count">0</span>
+  </div>
+
+  <!-- Crystal and pickaxe -->
+  <img id="crystal" src="crystal.png" alt="crystal">
+  <img id="pickaxe" src="pickaxe1.png" alt="pickaxe">
+
+  <!-- Level bar -->
+  <div id="level-bar-container">
+    <div id="level-bar"></div>
+  </div>
+
+  <!-- Level counter -->
+  <div id="level-counter">
+    <img src="drop.png" alt="drop">
+    <span id="level-text">0/100</span>
+  </div>
+
+  <!-- Goblin buy button -->
+  <img id="gob-button" src="bt.png" alt="buy goblin">
+
+  <!-- Sound toggle button -->
+<img id="sound-btn" src="sb.png" alt="sound" title="Toggle Sound">
+
+
+  <!-- Audio -->
+  <audio id="bgm" src="loop.mp3" loop></audio>
+  <audio id="hit" src="hit.mp3"></audio>
+  <audio id="buy-sound" src="bt.mp3"></audio>
+</div>
+
+<!-- Drop counter -->
+<div id="drop-display">
+  <img id="drop-img" src="drop.png" alt="drop">
+  <span id="drop-multiplier">x1</span>
+</div>
+
+<script>
+const crystal = document.getElementById('crystal');
+const pickaxe = document.getElementById('pickaxe');
+const countDisplay = document.getElementById('count');
+const hitSound = document.getElementById('hit');
+const bgm = document.getElementById('bgm');
+const game = document.getElementById('game');
+const gobButton = document.getElementById('gob-button');
+const levelBar = document.getElementById('level-bar');
+const levelText = document.getElementById('level-text');
+const buySound = document.getElementById('buy-sound');
+const soundBtn = document.getElementById('sound-btn');
+
+let isMuted = false;
+let count = 0;
+let currentLevel = 0;
+let goblins = [];
+let skeletons = [];
+
+const MAX_GOBLINS = 20;
+
+// === SETTINGS ===
+const pickaxeLevels = [
+  { threshold: 0, img: 'pickaxe1.png', power: 1 },
+  { threshold: 100, img: 'pickaxe2.png', power: 2 },
+  { threshold: 500, img: 'pickaxe3.png', power: 5 },
+  { threshold: 1000, img: 'pickaxe4.png', power: 10 },
+  { threshold: 5000, img: 'pickaxe5.png', power: 25 },
+  { threshold: 10000, img: 'pickaxe6.png', power: 50 },
+  { threshold: 50000, img: 'pickaxe7.png', power: 100 },
+  { threshold: 100000, img: 'pickaxe8.png', power: 250 },
+  { threshold: 1000000, img: 'pickaxe9.png', power: 1000 }
+];
+
+
+const goblinTypes = [
+  { img: 'sp1.png', cost: 50, interval: 1000, power: 1 }
+];
+
+// Sounds
+const gobSounds = [ new Audio('gob1.mp3'), new Audio('gob2.mp3') ];
+const attackSound = new Audio('attack.mp3');
+
+soundBtn.addEventListener('click', () => {
+  isMuted = !isMuted;
+  soundBtn.classList.toggle('muted', isMuted);
+
+  // ✅ Change the icon image
+  soundBtn.src = isMuted ? 'sb_off.png' : 'sb.png';
+
+  // ✅ Mute or unmute all sounds
+  [bgm, hitSound, buySound, ...gobSounds, attackSound].forEach(snd => {
+    snd.muted = isMuted;
+  });
+
+  //Optional: visual pop feedback
+  soundBtn.classList.add('pop-zoom-drop');
+  setTimeout(() => soundBtn.classList.remove('pop-zoom-drop'), 250);
+});
+
+
+// Volume boost
+bgm.volume = Math.min(1, bgm.volume * 1.7);
+document.body.addEventListener('click', () => bgm.play().catch(() => {}), { once: true });
+
+// === DROP COUNTER (under crystal) ===
+let dropCount = 0;
+let dropTimer = null;
+
+function showDropCounter() {
+  const dropDisplay = document.getElementById('drop-display');
+  const dropMultiplier = dropDisplay.querySelector('#drop-multiplier');
+
+  dropCount++;
+  dropMultiplier.textContent = `x${dropCount}`;
+  
+  dropDisplay.classList.add('show', 'pop-zoom-drop');
+
+  // Remove pop animation class so it can trigger again
+  setTimeout(() => dropDisplay.classList.remove('pop-zoom-drop'), 250);
+
+  // Reset timer
+  if (dropTimer) clearTimeout(dropTimer);
+  dropTimer = setTimeout(() => {
+    dropDisplay.classList.remove('show');
+    dropCount = 0;
+  }, 670);
+}
+
+// === MINE ===
+function mine(powerOverride, isPlayer = false) {
+  const power = powerOverride || pickaxeLevels[currentLevel].power;
+  count += power;
+  countDisplay.textContent = count;
+
+  if (isPlayer) {
+    showDropCounter();
+    hitSound.currentTime = 0;
+    hitSound.play().catch(() => {});
+    pickaxe.classList.add('swing');
+    crystal.classList.add('pop');
+    game.classList.add('pop-zoom');
+    setTimeout(() => pickaxe.classList.remove('swing'), 250);
+    setTimeout(() => crystal.classList.remove('pop'), 250);
+    setTimeout(() => game.classList.remove('pop-zoom'), 250);
+  }
+
+  // Pickaxe upgrade logic
+  for (let i = pickaxeLevels.length - 1; i >= 0; i--) {
+    if (count >= pickaxeLevels[i].threshold) {
+      currentLevel = i;
+      pickaxe.src = pickaxeLevels[i].img;
+      break;
+    }
+  }
+
+  const nextThreshold = pickaxeLevels[currentLevel + 1]?.threshold || 10000;
+  const progress = (count - pickaxeLevels[currentLevel].threshold) /
+    (nextThreshold - pickaxeLevels[currentLevel].threshold);
+  levelBar.style.width = Math.min(progress * 100, 100) + '%';
+  levelText.textContent = `${count}/${nextThreshold}`;
+}
+
+// === ASSIGN GOBLIN TO SKELETON (ONE-SHOT) ===
+function assignGoblinToSkeleton() {
+  if (goblins.length === 0 || skeletons.length === 0) return;
+  const gobObj = goblins.shift();
+  const gob = gobObj.element;
+  clearInterval(gobObj.interval);
+
+  const target = skeletons.shift();
+  if (!target) return;
+
+  gob.src = 'sp2.png';
+  const rect = target.getBoundingClientRect();
+  gob.style.transition = 'left 1s linear, top 1s linear';
+  gob.style.left = rect.left + 'px';
+  gob.style.top = rect.top + 'px';
+
+  setTimeout(() => {
+    if (game.contains(target)) game.removeChild(target);
+    attackSound.currentTime = 0;
+    attackSound.volume = 0.6;
+    attackSound.play().catch(() => {});
+    gob.remove();
+    count += 60;
+    countDisplay.textContent = count;
+    if (skeletons.length > 0 && goblins.length > 0) assignGoblinToSkeleton();
+  }, 1200);
+}
+
+// === GOBLINS ===
+function spawnGoblins(typeIndex) {
+  if (goblins.length >= MAX_GOBLINS) return;
+
+  const type = goblinTypes[typeIndex];
+  const spawnOffsetY = 150;
+
+  if (count < type.cost) return;
+  count -= type.cost;
+  countDisplay.textContent = count;
+  buySound.currentTime = 0;
+  buySound.play().catch(() => {});
+
+  const gob = document.createElement('img');
+  gob.src = type.img;
+  gob.className = 'goblin';
+  const spawnX = Math.random() * (window.innerWidth - 240);
+  const spawnY = window.innerHeight / 2 + spawnOffsetY + (Math.random() * 20 - 10);
+  gob.style.left = spawnX + 'px';
+  gob.style.top = spawnY + 'px';
+  gob.style.transform = spawnX > window.innerWidth / 2 ? 'scaleX(-1)' : 'scaleX(1)';
+  game.appendChild(gob);
+
+  const interval = setInterval(() => {
+    gob.style.transform = (gob.style.transform.replace(/ scaleY\([^)]+\)/, '') || '') + ' scaleY(1.3)';
+    setTimeout(() => {
+      gob.style.transform = gob.style.transform.replace(/ scaleY\([^)]+\)/, '');
+    }, 200);
+
+    mine(Math.max(1, Math.floor(type.power / 3)), false);
+
+    // Random goblin sound (10% chance)
+    if (Math.random() < 0.1) {
+      const sound = gobSounds[Math.floor(Math.random() * gobSounds.length)];
+      sound.currentTime = 0;
+      sound.volume = 0.4;
+      sound.play().catch(()=>{});
+    }
+
+    if (skeletons.length > 0) assignGoblinToSkeleton();
+  }, type.interval);
+
+  goblins.push({ element: gob, interval });
+}
+
+// === SKELETONS ===
+let skeletonSpawnDelay = 15000;
+const MIN_SPAWN = 6000;
+const spawnOffsetY = 150;
+
+function spawnSkeleton() {
+  const skel = document.createElement('div');
+  skel.className = 'skeleton';
+  skel.innerHTML = '<img src="skel.png" style="width:100%;height:100%;">';
+  const rect = gobButton.getBoundingClientRect();
+  const spawnX = rect.left + rect.width / 2 + (Math.random() * 200 - 100);
+  const spawnY = window.innerHeight / 2 + spawnOffsetY;
+  skel.style.left = spawnX + 'px';
+  skel.style.top = spawnY + 'px';
+  skeletons.push(skel);
+  game.appendChild(skel);
+  assignGoblinToSkeleton();
+}
+
+function skeletonLoop() {
+  if (count >= 120) spawnSkeleton();
+  skeletonSpawnDelay = Math.max(MIN_SPAWN, skeletonSpawnDelay * 0.9);
+  setTimeout(skeletonLoop, skeletonSpawnDelay);
+}
+skeletonLoop();
+
+
+// === EVENTS ===
+crystal.addEventListener('click', () => mine(undefined, true));
+gobButton.addEventListener('click', () => spawnGoblins(0));
+</script>
+</body>
+</html>
