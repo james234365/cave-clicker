@@ -248,6 +248,78 @@ body {
   filter: brightness(1.2);
 }
 
+/* === RESET BUTTON === */
+#reset-btn {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 84px; /* doubled from 42px */
+  height: 84px; /* doubled */
+  cursor: pointer;
+  image-rendering: pixelated;
+  transition: transform 0.2s ease, filter 0.3s ease;
+  z-index: 20;
+}
+
+#reset-btn:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+/* === RESET OVERLAY === */
+#reset-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.reset-box h1 {
+  font-size: 22px;
+  margin-bottom: 30px;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* === RESET BUTTONS === */
+.reset-buttons {
+  display: flex;
+  justify-content: center; /* ⬅ centers horizontally */
+  align-items: center;     /* ⬅ centers vertically in the row */
+  gap: 40px;               /* ⬅ space between YES and NO */
+}
+
+.reset-buttons button {
+  background: none;
+  border: none;
+  outline: none;
+  color: white;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#reset-yes {
+  color: red;
+}
+
+.reset-buttons button:hover {
+  transform: scale(1.15);
+  filter: brightness(1.3);
+}
+
+@keyframes popIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
 </style>
 </head>
 <body>
@@ -278,6 +350,17 @@ body {
 
   <!-- Sound toggle button -->
 <img id="sound-btn" src="sb.png" alt="sound" title="Toggle Sound">
+
+<img id="reset-btn" src="res.png" alt="Reset">
+<div id="reset-overlay">
+  <div class="reset-box">
+    <h1>U REALLY WANNA RESTART?</h1>
+    <div class="reset-buttons">
+      <button id="reset-yes">YES</button>
+      <button id="reset-no">NO</button>
+    </div>
+  </div>
+</div>
 
 
   <!-- Audio -->
@@ -326,54 +409,38 @@ const pickaxeLevels = [
   { threshold: 1000000, img: 'pickaxe9.png', power: 1000 }
 ];
 
-
 const goblinTypes = [
   { img: 'sp1.png', cost: 50, interval: 1000, power: 1 }
 ];
 
-// Sounds
+// === SOUNDS ===
 const gobSounds = [ new Audio('gob1.mp3'), new Audio('gob2.mp3') ];
 const attackSound = new Audio('attack.mp3');
 
 soundBtn.addEventListener('click', () => {
   isMuted = !isMuted;
   soundBtn.classList.toggle('muted', isMuted);
-
-  // ✅ Change the icon image
   soundBtn.src = isMuted ? 'sb_off.png' : 'sb.png';
-
-  // ✅ Mute or unmute all sounds
   [bgm, hitSound, buySound, ...gobSounds, attackSound].forEach(snd => {
     snd.muted = isMuted;
   });
-
-  //Optional: visual pop feedback
   soundBtn.classList.add('pop-zoom-drop');
   setTimeout(() => soundBtn.classList.remove('pop-zoom-drop'), 250);
 });
 
-
-// Volume boost
 bgm.volume = Math.min(1, bgm.volume * 1.7);
 document.body.addEventListener('click', () => bgm.play().catch(() => {}), { once: true });
 
-// === DROP COUNTER (under crystal) ===
+// === DROP COUNTER ===
 let dropCount = 0;
 let dropTimer = null;
-
 function showDropCounter() {
   const dropDisplay = document.getElementById('drop-display');
   const dropMultiplier = dropDisplay.querySelector('#drop-multiplier');
-
   dropCount++;
   dropMultiplier.textContent = `x${dropCount}`;
-  
   dropDisplay.classList.add('show', 'pop-zoom-drop');
-
-  // Remove pop animation class so it can trigger again
   setTimeout(() => dropDisplay.classList.remove('pop-zoom-drop'), 250);
-
-  // Reset timer
   if (dropTimer) clearTimeout(dropTimer);
   dropTimer = setTimeout(() => {
     dropDisplay.classList.remove('show');
@@ -399,7 +466,6 @@ function mine(powerOverride, isPlayer = false) {
     setTimeout(() => game.classList.remove('pop-zoom'), 250);
   }
 
-  // Pickaxe upgrade logic
   for (let i = pickaxeLevels.length - 1; i >= 0; i--) {
     if (count >= pickaxeLevels[i].threshold) {
       currentLevel = i;
@@ -415,7 +481,7 @@ function mine(powerOverride, isPlayer = false) {
   levelText.textContent = `${count}/${nextThreshold}`;
 }
 
-// === ASSIGN GOBLIN TO SKELETON (ONE-SHOT) ===
+// === GOBLIN ASSIGNMENT ===
 function assignGoblinToSkeleton() {
   if (goblins.length === 0 || skeletons.length === 0) return;
   const gobObj = goblins.shift();
@@ -444,17 +510,20 @@ function assignGoblinToSkeleton() {
 }
 
 // === GOBLINS ===
-function spawnGoblins(typeIndex) {
+function spawnGoblins(typeIndex, isRestore = false) {
   if (goblins.length >= MAX_GOBLINS) return;
 
   const type = goblinTypes[typeIndex];
   const spawnOffsetY = 150;
 
-  if (count < type.cost) return;
-  count -= type.cost;
-  countDisplay.textContent = count;
-  buySound.currentTime = 0;
-  buySound.play().catch(() => {});
+  // ✅ skip cost when loading saved goblins
+  if (!isRestore && count < type.cost) return;
+  if (!isRestore) {
+    count -= type.cost;
+    countDisplay.textContent = count;
+    buySound.currentTime = 0;
+    buySound.play().catch(() => {});
+  }
 
   const gob = document.createElement('img');
   gob.src = type.img;
@@ -474,7 +543,7 @@ function spawnGoblins(typeIndex) {
 
     mine(Math.max(1, Math.floor(type.power / 3)), false);
 
-    // Random goblin sound (10% chance)
+    // Random goblin sound
     if (Math.random() < 0.1) {
       const sound = gobSounds[Math.floor(Math.random() * gobSounds.length)];
       sound.currentTime = 0;
@@ -514,10 +583,61 @@ function skeletonLoop() {
 }
 skeletonLoop();
 
+// === SAVE / LOAD ===
+function saveGame() {
+  const saveData = {
+    count,
+    currentLevel,
+    goblins: goblins.length
+  };
+  localStorage.setItem('crystalMinerSave', JSON.stringify(saveData));
+  console.log("Game saved:", saveData);
+}
+
+function loadGame() {
+  const saved = localStorage.getItem('crystalMinerSave');
+  if (!saved) return;
+  const data = JSON.parse(saved);
+  count = data.count || 0;
+  currentLevel = data.currentLevel || 0;
+  countDisplay.textContent = count;
+  pickaxe.src = pickaxeLevels[currentLevel].img;
+
+  // ✅ restore goblins
+  for (let i = 0; i < (data.goblins || 0); i++) {
+    spawnGoblins(0, true);
+  }
+
+  console.log("Game loaded:", data);
+}
+
+setInterval(saveGame, 5000);
+window.addEventListener('load', loadGame);
 
 // === EVENTS ===
 crystal.addEventListener('click', () => mine(undefined, true));
 gobButton.addEventListener('click', () => spawnGoblins(0));
+
+// === RESET BUTTON ===
+const resetBtn = document.getElementById('reset-btn');
+const resetOverlay = document.getElementById('reset-overlay');
+const resetYes = document.getElementById('reset-yes');
+const resetNo = document.getElementById('reset-no');
+
+resetBtn.addEventListener('click', () => {
+  resetOverlay.style.display = 'flex';
+});
+
+resetNo.addEventListener('click', () => {
+  resetOverlay.style.display = 'none';
+});
+
+resetYes.addEventListener('click', () => {
+  localStorage.removeItem('crystalMinerSave');
+  location.reload();
+});
+
 </script>
+
 </body>
 </html>
